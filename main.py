@@ -1,57 +1,73 @@
-#!/usr/bin/env python3
-"""Entrypoint for the Republic of Sorrelia passport spread.
+# Passport v2 entrypoint.
+# The artwork itself is already rendered: entry.png sits right beside this
+# file (draw.py produced it). This script only checks that the render is a
+# genuine 1024x1024 JPEG under 1 MiB and drops a copy where the grader
+# wants it. It never writes into the repo itself, because the grader mounts
+# the repo read-only and hands us a writable output folder instead.
+# Output folder priority: argv[1] first, then MAKEFUN_OUTPUT_DIR, then an
+# "out" folder next to this script. No relative paths from the cwd.
 
-This script draws nothing by itself. The artwork lives in entry.png,
-rendered by draw.py. This entrypoint only proves the rendered image
-is present and well-formed, then places a copy in the output
-directory so the make.fun harness can pick it up.
-
-Checks performed: the file exists, is a real JPEG, measures exactly
-1024 by 1024 pixels, and stays under one mebibyte.
-"""
-
+import os
+import shutil
 import sys
 from pathlib import Path
 
 from PIL import Image
 
-EXPECTED_WIDTH = 1024
-EXPECTED_HEIGHT = 1024
+RENDER_NAME = "entry.png"
 MAX_BYTES = 1024 * 1024
+EXPECTED_SIZE = (1024, 1024)
+JPEG_MAGIC = b"\xff\xd8\xff"
 
 
-def fail(message: str) -> None:
-    print(f"error: {message}", file=sys.stderr)
-    raise SystemExit(1)
+def fail(reason):
+    print(f"entrypoint error: {reason}", file=sys.stderr)
+    return 1
 
 
-def main(argv: list[str]) -> int:
+def locate_render():
     here = Path(__file__).resolve().parent
-    source = here / "entry.png"
-    if not source.is_file():
-        fail(f"entry.png not found next to {__file__}")
-    size = source.stat().st_size
-    if size >= MAX_BYTES:
-        fail(f"entry.png is {size} bytes, over the 1 MiB limit")
-    try:
-        with Image.open(source) as picture:
-            picture.verify()
-        with Image.open(source) as picture:
-            width, height = picture.size
-            fmt = picture.format
-    except Exception as exc:  # unreadable or truncated image
-        fail(f"entry.png could not be read as an image: {exc}")
-    if fmt != "JPEG":
-        fail(f"entry.png is {fmt}, expected JPEG")
-    if (width, height) != (EXPECTED_WIDTH, EXPECTED_HEIGHT):
-        fail(f"entry.png is {width}x{height}, expected 1024x1024")
-    target_dir = Path(argv[1]) if len(argv) > 1 else Path("out")
+    return here / RENDER_NAME
+
+
+def check_render(path):
+    if not path.is_file():
+        return f"missing render file: {path}"
+    blob = path.read_bytes()
+    if len(blob) >= MAX_BYTES:
+        return f"render is {len(blob)} bytes, over the 1 MiB limit"
+    if blob[:3] != JPEG_MAGIC:
+        return "render does not start with JPEG magic bytes"
+    with Image.open(path) as shot:
+        if shot.size != EXPECTED_SIZE:
+            return f"render is {shot.size[0]}x{shot.size[1]}, expected 1024x1024"
+        if shot.format != "JPEG":
+            return f"render format is {shot.format}, expected JPEG"
+    return None
+
+
+def pick_output_dir():
+    if len(sys.argv) > 1 and sys.argv[1]:
+        return Path(sys.argv[1])
+    env_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "").strip()
+    if env_dir:
+        return Path(env_dir)
+    return Path(__file__).resolve().parent / "out"
+
+
+def main():
+    render = locate_render()
+    problem = check_render(render)
+    if problem is not None:
+        return fail(problem)
+    target_dir = pick_output_dir()
     target_dir.mkdir(parents=True, exist_ok=True)
-    destination = target_dir / "entry.png"
-    destination.write_bytes(source.read_bytes())
-    print(f"wrote {destination} ({destination.stat().st_size} bytes)")
+    destination = target_dir / RENDER_NAME
+    shutil.copyfile(render, destination)
+    copied = destination.stat().st_size
+    print(f"copied entry.png ({copied} bytes) to {destination}")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+    raise SystemExit(main())
