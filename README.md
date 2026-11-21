@@ -12,8 +12,7 @@ story in stamps (Vistria Apr 2024, Carnelia Jun 2025, Belmar Oct
 2025, home 19 Oct 2025). The right page is the data page: a realistic
 photographic portrait, bilingual Sorrelian / English labels, consistent
 issue details, a conditions box stating the cable-car quirk, and a
-format-correct machine-readable zone. Drawn entirely with Pillow —
-no AI images in the document itself, no network. A fixed seed makes
+format-correct machine-readable zone. The portrait is a generated photographic portrait composited into the data page by Pillow; all layout, text, stamps and the MRZ are drawn with Pillow, no network. A fixed seed makes
 two runs byte identical. Renders entry.png, a 1024×1024 JPEG.
 
 ## Run it
