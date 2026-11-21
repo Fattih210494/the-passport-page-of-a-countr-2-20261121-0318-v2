@@ -40,7 +40,7 @@ STAMP_TEAL = (46, 107, 98)
 VISA_BLUE = (38, 84, 120)
 
 PORTRAIT_PATH = Path(__file__).resolve().with_name(
-    "media-generation-portrait-0-b0bca9b7-bb61-49ef-ba62-96e8f5cadbdc.webp")
+    "portrait.webp")
 
 # --- fonts ---------------------------------------------------------------
 FONT_DIR = Path("/usr/share/fonts/truetype")
